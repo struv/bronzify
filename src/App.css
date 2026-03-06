@@ -128,6 +128,24 @@ h1 {
   accent-color: #CD7F32;
 }
 
+.slider {
+  width: 150px;
+  height: 6px;
+  border-radius: 3px;
+  background: #333;
+  outline: none;
+  cursor: pointer;
+  accent-color: #CD7F32;
+}
+
+.slider::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #CD7F32;
+  cursor: pointer;
+}
+
 .upload-area {
   border: 2px dashed #333;
   border-radius: 12px;

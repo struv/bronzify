@@ -78,9 +78,9 @@ function App() {
   const [image, setImage] = useState(null)
   const [processedImage, setProcessedImage] = useState(null)
   const [selectedGradient, setSelectedGradient] = useState('copperWarm')
-  const [preserveWhite, setPreserveWhite] = useState(true)
-  const [gradientMode, setGradientMode] = useState('luminance') // 'luminance' or 'positional'
+  const [gradientMode, setGradientMode] = useState('bevel') // 'bevel' or 'positional'
   const [gradientDirection, setGradientDirection] = useState('horizontal') // 'horizontal', 'vertical', 'radial'
+  const [bevelDepth, setBevelDepth] = useState(20) // pixels
   const canvasRef = useRef(null)
   const fileInputRef = useRef(null)
 
@@ -120,35 +120,105 @@ function App() {
     const centerY = height / 2
     const maxDist = Math.sqrt(centerX * centerX + centerY * centerY)
     
-    if (gradientMode === 'positional') {
-      // First pass: find bounding box of non-transparent pixels
-      let minX = width, maxX = 0, minY = height, maxY = 0
+    // First pass: find bounding box and create alpha map
+    let minX = width, maxX = 0, minY = height, maxY = 0
+    const alphaMap = new Uint8Array(width * height)
+    
+    for (let i = 0; i < pixels.length; i += 4) {
+      const a = pixels[i + 3]
+      const pixelIndex = i / 4
+      const x = pixelIndex % width
+      const y = Math.floor(pixelIndex / width)
       
-      for (let i = 0; i < pixels.length; i += 4) {
-        const a = pixels[i + 3]
-        if (a < 10) continue
-        
-        const pixelIndex = i / 4
-        const x = pixelIndex % width
-        const y = Math.floor(pixelIndex / width)
-        
+      alphaMap[pixelIndex] = a >= 10 ? 1 : 0
+      
+      if (a >= 10) {
         minX = Math.min(minX, x)
         maxX = Math.max(maxX, x)
         minY = Math.min(minY, y)
         maxY = Math.max(maxY, y)
       }
+    }
+    
+    const boundWidth = maxX - minX || 1
+    const boundHeight = maxY - minY || 1
+    const boundCenterX = minX + boundWidth / 2
+    const boundCenterY = minY + boundHeight / 2
+    const boundMaxDist = Math.sqrt((boundWidth / 2) ** 2 + (boundHeight / 2) ** 2)
+    
+    if (gradientMode === 'bevel') {
+      // Calculate distance field from edges
+      const distanceField = new Float32Array(width * height)
+      distanceField.fill(Infinity)
       
-      const boundWidth = maxX - minX || 1
-      const boundHeight = maxY - minY || 1
-      const boundCenterX = minX + boundWidth / 2
-      const boundCenterY = minY + boundHeight / 2
-      const boundMaxDist = Math.sqrt((boundWidth / 2) ** 2 + (boundHeight / 2) ** 2)
+      // Find edge pixels and set their distance to 0
+      const queue = []
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const idx = y * width + x
+          if (alphaMap[idx] === 0) continue
+          
+          // Check if this is an edge pixel (has transparent neighbor)
+          const neighbors = [
+            [x-1, y], [x+1, y], [x, y-1], [x, y+1]
+          ]
+          
+          for (const [nx, ny] of neighbors) {
+            if (nx < 0 || nx >= width || ny < 0 || ny >= height) {
+              distanceField[idx] = 0
+              queue.push([x, y, 0])
+              break
+            }
+            if (alphaMap[ny * width + nx] === 0) {
+              distanceField[idx] = 0
+              queue.push([x, y, 0])
+              break
+            }
+          }
+        }
+      }
       
-      // Second pass: apply gradient within bounding box
+      // BFS to propagate distances
+      while (queue.length > 0) {
+        const [cx, cy, dist] = queue.shift()
+        const neighbors = [
+          [cx-1, cy], [cx+1, cy], [cx, cy-1], [cx, cy+1]
+        ]
+        
+        for (const [nx, ny] of neighbors) {
+          if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue
+          const nidx = ny * width + nx
+          if (alphaMap[nidx] === 0) continue
+          
+          const newDist = dist + 1
+          if (newDist < distanceField[nidx]) {
+            distanceField[nidx] = newDist
+            queue.push([nx, ny, newDist])
+          }
+        }
+      }
+      
+      // Apply gradient based on distance field
       for (let i = 0; i < pixels.length; i += 4) {
         const a = pixels[i + 3]
+        if (a < 10) continue
         
-        // Skip transparent pixels
+        const pixelIndex = i / 4
+        const dist = distanceField[pixelIndex]
+        
+        // Normalize distance: 0 at edge, 1 at bevelDepth or beyond
+        const t = Math.min(1, dist / bevelDepth)
+        
+        const [nr, ng, nb] = sampleGradient(gradient, t)
+        
+        pixels[i] = nr
+        pixels[i + 1] = ng
+        pixels[i + 2] = nb
+      }
+    } else {
+      // Positional mode: gradient based on position within bounding box
+      for (let i = 0; i < pixels.length; i += 4) {
+        const a = pixels[i + 3]
         if (a < 10) continue
         
         const pixelIndex = i / 4
@@ -171,57 +241,11 @@ function App() {
         pixels[i + 1] = ng
         pixels[i + 2] = nb
       }
-    } else {
-      // Luminance mode: gradient based on brightness
-      // First pass: find min/max luminance for normalization
-      let minLum = 255
-      let maxLum = 0
-      
-      for (let i = 0; i < pixels.length; i += 4) {
-        const r = pixels[i]
-        const g = pixels[i + 1]
-        const b = pixels[i + 2]
-        const a = pixels[i + 3]
-        
-        if (a < 10) continue
-        if (preserveWhite && r > 240 && g > 240 && b > 240) continue
-        
-        const lum = 0.299 * r + 0.587 * g + 0.114 * b
-        minLum = Math.min(minLum, lum)
-        maxLum = Math.max(maxLum, lum)
-      }
-      
-      const lumRange = maxLum - minLum || 1
-      
-      // Second pass: apply gradient with normalized luminance
-      for (let i = 0; i < pixels.length; i += 4) {
-        const r = pixels[i]
-        const g = pixels[i + 1]
-        const b = pixels[i + 2]
-        const a = pixels[i + 3]
-        
-        // Skip transparent pixels
-        if (a < 10) continue
-        
-        // Optionally preserve near-white pixels
-        if (preserveWhite && r > 240 && g > 240 && b > 240) continue
-        
-        // Calculate luminance and normalize to 0-1 range
-        const lum = 0.299 * r + 0.587 * g + 0.114 * b
-        const normalizedLum = (lum - minLum) / lumRange
-        
-        // Sample gradient
-        const [nr, ng, nb] = sampleGradient(gradient, normalizedLum)
-        
-        pixels[i] = nr
-        pixels[i + 1] = ng
-        pixels[i + 2] = nb
-      }
     }
     
     ctx.putImageData(imageData, 0, 0)
     setProcessedImage(canvas.toDataURL('image/png'))
-  }, [preserveWhite, gradientMode, gradientDirection])
+  }, [gradientMode, gradientDirection, bevelDepth])
 
   const handleGradientChange = (gradientName) => {
     setSelectedGradient(gradientName)
@@ -295,13 +319,13 @@ function App() {
           <label className="option-label">Mode:</label>
           <div className="toggle-buttons">
             <button 
-              className={`toggle-btn ${gradientMode === 'luminance' ? 'active' : ''}`}
+              className={`toggle-btn ${gradientMode === 'bevel' ? 'active' : ''}`}
               onClick={() => {
-                setGradientMode('luminance')
+                setGradientMode('bevel')
                 if (image) setTimeout(() => processImage(image, selectedGradient), 0)
               }}
             >
-              Luminance
+              🔲 Bevel
             </button>
             <button 
               className={`toggle-btn ${gradientMode === 'positional' ? 'active' : ''}`}
@@ -310,10 +334,27 @@ function App() {
                 if (image) setTimeout(() => processImage(image, selectedGradient), 0)
               }}
             >
-              Positional
+              📐 Positional
             </button>
           </div>
         </div>
+        
+        {gradientMode === 'bevel' && (
+          <div className="option-group">
+            <label className="option-label">Depth: {bevelDepth}px</label>
+            <input
+              type="range"
+              min="5"
+              max="100"
+              value={bevelDepth}
+              onChange={(e) => {
+                setBevelDepth(parseInt(e.target.value))
+                if (image) setTimeout(() => processImage(image, selectedGradient), 0)
+              }}
+              className="slider"
+            />
+          </div>
+        )}
         
         {gradientMode === 'positional' && (
           <div className="option-group">
@@ -348,20 +389,6 @@ function App() {
               </button>
             </div>
           </div>
-        )}
-        
-        {gradientMode === 'luminance' && (
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={preserveWhite}
-              onChange={(e) => {
-                setPreserveWhite(e.target.checked)
-                if (image) processImage(image, selectedGradient)
-              }}
-            />
-            Preserve white/light backgrounds
-          </label>
         )}
       </div>
 
