@@ -93,6 +93,27 @@ function App() {
     const pixels = imageData.data
     const gradient = GRADIENTS[gradientName]
     
+    // First pass: find min/max luminance for normalization
+    let minLum = 255
+    let maxLum = 0
+    
+    for (let i = 0; i < pixels.length; i += 4) {
+      const r = pixels[i]
+      const g = pixels[i + 1]
+      const b = pixels[i + 2]
+      const a = pixels[i + 3]
+      
+      if (a < 10) continue
+      if (preserveWhite && r > 240 && g > 240 && b > 240) continue
+      
+      const lum = 0.299 * r + 0.587 * g + 0.114 * b
+      minLum = Math.min(minLum, lum)
+      maxLum = Math.max(maxLum, lum)
+    }
+    
+    const lumRange = maxLum - minLum || 1
+    
+    // Second pass: apply gradient with normalized luminance
     for (let i = 0; i < pixels.length; i += 4) {
       const r = pixels[i]
       const g = pixels[i + 1]
@@ -105,11 +126,12 @@ function App() {
       // Optionally preserve near-white pixels
       if (preserveWhite && r > 240 && g > 240 && b > 240) continue
       
-      // Calculate luminance
-      const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+      // Calculate luminance and normalize to 0-1 range
+      const lum = 0.299 * r + 0.587 * g + 0.114 * b
+      const normalizedLum = (lum - minLum) / lumRange
       
       // Sample gradient
-      const [nr, ng, nb] = sampleGradient(gradient, lum)
+      const [nr, ng, nb] = sampleGradient(gradient, normalizedLum)
       
       pixels[i] = nr
       pixels[i + 1] = ng
