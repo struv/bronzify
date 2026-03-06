@@ -121,7 +121,30 @@ function App() {
     const maxDist = Math.sqrt(centerX * centerX + centerY * centerY)
     
     if (gradientMode === 'positional') {
-      // Positional mode: gradient based on position, not luminance
+      // First pass: find bounding box of non-transparent pixels
+      let minX = width, maxX = 0, minY = height, maxY = 0
+      
+      for (let i = 0; i < pixels.length; i += 4) {
+        const a = pixels[i + 3]
+        if (a < 10) continue
+        
+        const pixelIndex = i / 4
+        const x = pixelIndex % width
+        const y = Math.floor(pixelIndex / width)
+        
+        minX = Math.min(minX, x)
+        maxX = Math.max(maxX, x)
+        minY = Math.min(minY, y)
+        maxY = Math.max(maxY, y)
+      }
+      
+      const boundWidth = maxX - minX || 1
+      const boundHeight = maxY - minY || 1
+      const boundCenterX = minX + boundWidth / 2
+      const boundCenterY = minY + boundHeight / 2
+      const boundMaxDist = Math.sqrt((boundWidth / 2) ** 2 + (boundHeight / 2) ** 2)
+      
+      // Second pass: apply gradient within bounding box
       for (let i = 0; i < pixels.length; i += 4) {
         const a = pixels[i + 3]
         
@@ -134,12 +157,12 @@ function App() {
         
         let t = 0
         if (gradientDirection === 'horizontal') {
-          t = x / width
+          t = (x - minX) / boundWidth
         } else if (gradientDirection === 'vertical') {
-          t = y / height
+          t = (y - minY) / boundHeight
         } else if (gradientDirection === 'radial') {
-          const dist = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2)
-          t = dist / maxDist
+          const dist = Math.sqrt((x - boundCenterX) ** 2 + (y - boundCenterY) ** 2)
+          t = Math.min(1, dist / boundMaxDist)
         }
         
         const [nr, ng, nb] = sampleGradient(gradient, t)
