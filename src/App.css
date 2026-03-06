@@ -1,0 +1,172 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #0a0a0a;
+  color: #e0e0e0;
+  font-family: 'Inter', -apple-system, sans-serif;
+  min-height: 100vh;
+}
+
+.app {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+h1 {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(90deg, #CD7F32, #FFD700);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.subtitle {
+  color: #888;
+  margin-bottom: 2rem;
+}
+
+.gradients {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.gradient-btn {
+  padding: 0.75rem 1.25rem;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  transition: all 0.2s ease;
+  min-width: 100px;
+}
+
+.gradient-btn span {
+  background: rgba(0, 0, 0, 0.6);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  color: white;
+}
+
+.gradient-btn:hover {
+  transform: scale(1.05);
+}
+
+.gradient-btn.active {
+  border-color: #FFD700;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+.options {
+  margin-bottom: 1.5rem;
+}
+
+.options label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: #aaa;
+  cursor: pointer;
+}
+
+.options input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #CD7F32;
+}
+
+.upload-area {
+  border: 2px dashed #333;
+  border-radius: 12px;
+  padding: 2rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #111;
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.upload-area:hover {
+  border-color: #CD7F32;
+  background: #1a1a1a;
+}
+
+.upload-prompt {
+  color: #666;
+}
+
+.upload-prompt p {
+  font-size: 1.25rem;
+}
+
+.preview {
+  max-width: 100%;
+  max-height: 500px;
+  border-radius: 8px;
+}
+
+.actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+.download-btn, .reset-btn {
+  padding: 0.875rem 2rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.download-btn {
+  background: linear-gradient(135deg, #CD7F32, #B8860B);
+  color: white;
+}
+
+.download-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 20px rgba(205, 127, 50, 0.4);
+}
+
+.reset-btn {
+  background: #222;
+  color: #aaa;
+  border: 1px solid #333;
+}
+
+.reset-btn:hover {
+  background: #333;
+  color: white;
+}
+
+@media (max-width: 600px) {
+  .app {
+    padding: 1rem;
+  }
+  
+  h1 {
+    font-size: 2rem;
+  }
+  
+  .gradient-btn {
+    min-width: 80px;
+    padding: 0.5rem 0.75rem;
+  }
+}
