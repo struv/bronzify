@@ -42,6 +42,29 @@ function sampleGradient(gradient, t) {
   return gradient[gradient.length - 1].color
 }
 
+// Apply scale and extension mode to t value
+function applyScaleAndExtend(t, scale, extendMode) {
+  // Scale: 100 = normal, 50 = compressed (gradient repeats), 200 = expanded (only see half)
+  let scaled = t * (100 / scale)
+  
+  if (scaled <= 1 && scaled >= 0) {
+    return scaled
+  }
+  
+  // Handle values outside 0-1 range based on extend mode
+  if (extendMode === 'clamp') {
+    return Math.max(0, Math.min(1, scaled))
+  } else if (extendMode === 'repeat') {
+    return scaled - Math.floor(scaled)
+  } else if (extendMode === 'mirror') {
+    const cycle = Math.floor(scaled)
+    const frac = scaled - cycle
+    return cycle % 2 === 0 ? frac : 1 - frac
+  }
+  
+  return Math.max(0, Math.min(1, scaled))
+}
+
 function App() {
   const [image, setImage] = useState(null)
   const [processedImage, setProcessedImage] = useState(null)
@@ -50,6 +73,8 @@ function App() {
   const [gradientDirection, setGradientDirection] = useState('horizontal') // 'horizontal', 'vertical', 'radial'
   const [bevelDepth, setBevelDepth] = useState(20) // pixels
   const [gradientShift, setGradientShift] = useState(0) // -50 to 50, shifts gradient position
+  const [gradientScale, setGradientScale] = useState(100) // 25 to 200, scales gradient
+  const [extendMode, setExtendMode] = useState('mirror') // 'clamp', 'repeat', 'mirror'
   const canvasRef = useRef(null)
   const fileInputRef = useRef(null)
 
@@ -179,7 +204,10 @@ function App() {
         let t = Math.min(1, dist / bevelDepth)
         
         // Apply gradient shift
-        t = Math.max(0, Math.min(1, t + gradientShift / 100))
+        t = t + gradientShift / 100
+        
+        // Apply scale and extension
+        t = applyScaleAndExtend(t, gradientScale, extendMode)
         
         const [nr, ng, nb] = sampleGradient(gradient, t)
         
@@ -208,7 +236,10 @@ function App() {
         }
         
         // Apply gradient shift
-        t = Math.max(0, Math.min(1, t + gradientShift / 100))
+        t = t + gradientShift / 100
+        
+        // Apply scale and extension
+        t = applyScaleAndExtend(t, gradientScale, extendMode)
         
         const [nr, ng, nb] = sampleGradient(gradient, t)
         
@@ -220,7 +251,7 @@ function App() {
     
     ctx.putImageData(imageData, 0, 0)
     setProcessedImage(canvas.toDataURL('image/png'))
-  }, [gradientMode, gradientDirection, bevelDepth, gradientShift])
+  }, [gradientMode, gradientDirection, bevelDepth, gradientShift, gradientScale, extendMode])
 
   const handleGradientChange = (gradientName) => {
     setSelectedGradient(gradientName)
@@ -290,18 +321,69 @@ function App() {
       </div>
 
       <div className="gradient-adjust">
-        <label className="option-label">Gradient Shift: {gradientShift > 0 ? '+' : ''}{gradientShift}%</label>
-        <input
-          type="range"
-          min="-50"
-          max="50"
-          value={gradientShift}
-          onChange={(e) => {
-            setGradientShift(parseInt(e.target.value))
-            if (image) setTimeout(() => processImage(image, selectedGradient), 0)
-          }}
-          className="slider wide"
-        />
+        <div className="slider-row">
+          <label className="option-label">Shift: {gradientShift > 0 ? '+' : ''}{gradientShift}%</label>
+          <input
+            type="range"
+            min="-50"
+            max="50"
+            value={gradientShift}
+            onChange={(e) => {
+              setGradientShift(parseInt(e.target.value))
+              if (image) setTimeout(() => processImage(image, selectedGradient), 0)
+            }}
+            className="slider"
+          />
+        </div>
+        
+        <div className="slider-row">
+          <label className="option-label">Scale: {gradientScale}%</label>
+          <input
+            type="range"
+            min="25"
+            max="200"
+            step="5"
+            value={gradientScale}
+            onChange={(e) => {
+              setGradientScale(parseInt(e.target.value))
+              if (image) setTimeout(() => processImage(image, selectedGradient), 0)
+            }}
+            className="slider"
+          />
+        </div>
+        
+        <div className="extend-modes">
+          <label className="option-label">Extend:</label>
+          <div className="toggle-buttons small">
+            <button 
+              className={`toggle-btn ${extendMode === 'mirror' ? 'active' : ''}`}
+              onClick={() => {
+                setExtendMode('mirror')
+                if (image) setTimeout(() => processImage(image, selectedGradient), 0)
+              }}
+            >
+              Mirror
+            </button>
+            <button 
+              className={`toggle-btn ${extendMode === 'repeat' ? 'active' : ''}`}
+              onClick={() => {
+                setExtendMode('repeat')
+                if (image) setTimeout(() => processImage(image, selectedGradient), 0)
+              }}
+            >
+              Repeat
+            </button>
+            <button 
+              className={`toggle-btn ${extendMode === 'clamp' ? 'active' : ''}`}
+              onClick={() => {
+                setExtendMode('clamp')
+                if (image) setTimeout(() => processImage(image, selectedGradient), 0)
+              }}
+            >
+              Clamp
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="options">
