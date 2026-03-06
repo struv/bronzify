@@ -69,18 +69,60 @@ h1 {
 
 .options {
   margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
 }
 
-.options label {
+.option-group {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 0.75rem;
+}
+
+.option-label {
+  color: #888;
+  font-size: 0.875rem;
+}
+
+.toggle-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.toggle-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid #333;
+  border-radius: 6px;
+  background: #1a1a1a;
+  color: #888;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toggle-btn:hover {
+  background: #252525;
+  color: #ccc;
+}
+
+.toggle-btn.active {
+  background: linear-gradient(135deg, #CD7F32, #B8860B);
+  color: white;
+  border-color: #CD7F32;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
   gap: 0.5rem;
   color: #aaa;
   cursor: pointer;
+  font-size: 0.875rem;
 }
 
-.options input[type="checkbox"] {
+.checkbox-label input[type="checkbox"] {
   width: 18px;
   height: 18px;
   accent-color: #CD7F32;

@@ -59,6 +59,8 @@ function App() {
   const [processedImage, setProcessedImage] = useState(null)
   const [selectedGradient, setSelectedGradient] = useState('classic')
   const [preserveWhite, setPreserveWhite] = useState(true)
+  const [gradientMode, setGradientMode] = useState('luminance') // 'luminance' or 'positional'
+  const [gradientDirection, setGradientDirection] = useState('horizontal') // 'horizontal', 'vertical', 'radial'
   const canvasRef = useRef(null)
   const fileInputRef = useRef(null)
 
@@ -92,55 +94,91 @@ function App() {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
     const pixels = imageData.data
     const gradient = GRADIENTS[gradientName]
+    const width = canvas.width
+    const height = canvas.height
+    const centerX = width / 2
+    const centerY = height / 2
+    const maxDist = Math.sqrt(centerX * centerX + centerY * centerY)
     
-    // First pass: find min/max luminance for normalization
-    let minLum = 255
-    let maxLum = 0
-    
-    for (let i = 0; i < pixels.length; i += 4) {
-      const r = pixels[i]
-      const g = pixels[i + 1]
-      const b = pixels[i + 2]
-      const a = pixels[i + 3]
+    if (gradientMode === 'positional') {
+      // Positional mode: gradient based on position, not luminance
+      for (let i = 0; i < pixels.length; i += 4) {
+        const a = pixels[i + 3]
+        
+        // Skip transparent pixels
+        if (a < 10) continue
+        
+        const pixelIndex = i / 4
+        const x = pixelIndex % width
+        const y = Math.floor(pixelIndex / width)
+        
+        let t = 0
+        if (gradientDirection === 'horizontal') {
+          t = x / width
+        } else if (gradientDirection === 'vertical') {
+          t = y / height
+        } else if (gradientDirection === 'radial') {
+          const dist = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2)
+          t = dist / maxDist
+        }
+        
+        const [nr, ng, nb] = sampleGradient(gradient, t)
+        
+        pixels[i] = nr
+        pixels[i + 1] = ng
+        pixels[i + 2] = nb
+      }
+    } else {
+      // Luminance mode: gradient based on brightness
+      // First pass: find min/max luminance for normalization
+      let minLum = 255
+      let maxLum = 0
       
-      if (a < 10) continue
-      if (preserveWhite && r > 240 && g > 240 && b > 240) continue
+      for (let i = 0; i < pixels.length; i += 4) {
+        const r = pixels[i]
+        const g = pixels[i + 1]
+        const b = pixels[i + 2]
+        const a = pixels[i + 3]
+        
+        if (a < 10) continue
+        if (preserveWhite && r > 240 && g > 240 && b > 240) continue
+        
+        const lum = 0.299 * r + 0.587 * g + 0.114 * b
+        minLum = Math.min(minLum, lum)
+        maxLum = Math.max(maxLum, lum)
+      }
       
-      const lum = 0.299 * r + 0.587 * g + 0.114 * b
-      minLum = Math.min(minLum, lum)
-      maxLum = Math.max(maxLum, lum)
-    }
-    
-    const lumRange = maxLum - minLum || 1
-    
-    // Second pass: apply gradient with normalized luminance
-    for (let i = 0; i < pixels.length; i += 4) {
-      const r = pixels[i]
-      const g = pixels[i + 1]
-      const b = pixels[i + 2]
-      const a = pixels[i + 3]
+      const lumRange = maxLum - minLum || 1
       
-      // Skip transparent pixels
-      if (a < 10) continue
-      
-      // Optionally preserve near-white pixels
-      if (preserveWhite && r > 240 && g > 240 && b > 240) continue
-      
-      // Calculate luminance and normalize to 0-1 range
-      const lum = 0.299 * r + 0.587 * g + 0.114 * b
-      const normalizedLum = (lum - minLum) / lumRange
-      
-      // Sample gradient
-      const [nr, ng, nb] = sampleGradient(gradient, normalizedLum)
-      
-      pixels[i] = nr
-      pixels[i + 1] = ng
-      pixels[i + 2] = nb
+      // Second pass: apply gradient with normalized luminance
+      for (let i = 0; i < pixels.length; i += 4) {
+        const r = pixels[i]
+        const g = pixels[i + 1]
+        const b = pixels[i + 2]
+        const a = pixels[i + 3]
+        
+        // Skip transparent pixels
+        if (a < 10) continue
+        
+        // Optionally preserve near-white pixels
+        if (preserveWhite && r > 240 && g > 240 && b > 240) continue
+        
+        // Calculate luminance and normalize to 0-1 range
+        const lum = 0.299 * r + 0.587 * g + 0.114 * b
+        const normalizedLum = (lum - minLum) / lumRange
+        
+        // Sample gradient
+        const [nr, ng, nb] = sampleGradient(gradient, normalizedLum)
+        
+        pixels[i] = nr
+        pixels[i + 1] = ng
+        pixels[i + 2] = nb
+      }
     }
     
     ctx.putImageData(imageData, 0, 0)
     setProcessedImage(canvas.toDataURL('image/png'))
-  }, [preserveWhite])
+  }, [preserveWhite, gradientMode, gradientDirection])
 
   const handleGradientChange = (gradientName) => {
     setSelectedGradient(gradientName)
@@ -210,17 +248,78 @@ function App() {
       </div>
 
       <div className="options">
-        <label>
-          <input
-            type="checkbox"
-            checked={preserveWhite}
-            onChange={(e) => {
-              setPreserveWhite(e.target.checked)
-              if (image) processImage(image, selectedGradient)
-            }}
-          />
-          Preserve white/light backgrounds
-        </label>
+        <div className="option-group">
+          <label className="option-label">Mode:</label>
+          <div className="toggle-buttons">
+            <button 
+              className={`toggle-btn ${gradientMode === 'luminance' ? 'active' : ''}`}
+              onClick={() => {
+                setGradientMode('luminance')
+                if (image) setTimeout(() => processImage(image, selectedGradient), 0)
+              }}
+            >
+              Luminance
+            </button>
+            <button 
+              className={`toggle-btn ${gradientMode === 'positional' ? 'active' : ''}`}
+              onClick={() => {
+                setGradientMode('positional')
+                if (image) setTimeout(() => processImage(image, selectedGradient), 0)
+              }}
+            >
+              Positional
+            </button>
+          </div>
+        </div>
+        
+        {gradientMode === 'positional' && (
+          <div className="option-group">
+            <label className="option-label">Direction:</label>
+            <div className="toggle-buttons">
+              <button 
+                className={`toggle-btn ${gradientDirection === 'horizontal' ? 'active' : ''}`}
+                onClick={() => {
+                  setGradientDirection('horizontal')
+                  if (image) setTimeout(() => processImage(image, selectedGradient), 0)
+                }}
+              >
+                ↔️ Horizontal
+              </button>
+              <button 
+                className={`toggle-btn ${gradientDirection === 'vertical' ? 'active' : ''}`}
+                onClick={() => {
+                  setGradientDirection('vertical')
+                  if (image) setTimeout(() => processImage(image, selectedGradient), 0)
+                }}
+              >
+                ↕️ Vertical
+              </button>
+              <button 
+                className={`toggle-btn ${gradientDirection === 'radial' ? 'active' : ''}`}
+                onClick={() => {
+                  setGradientDirection('radial')
+                  if (image) setTimeout(() => processImage(image, selectedGradient), 0)
+                }}
+              >
+                🔘 Radial
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {gradientMode === 'luminance' && (
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={preserveWhite}
+              onChange={(e) => {
+                setPreserveWhite(e.target.checked)
+                if (image) processImage(image, selectedGradient)
+              }}
+            />
+            Preserve white/light backgrounds
+          </label>
+        )}
       </div>
 
       <div 
