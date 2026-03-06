@@ -1,36 +1,56 @@
 import { useState, useRef, useCallback } from 'react'
 import './App.css'
 
-// Bronze gradient presets
+// Bronze gradient presets - rich multi-stop metallic gradients
 const GRADIENTS = {
-  classic: [
-    { pos: 0, color: [61, 43, 31] },      // Dark bronze
-    { pos: 0.5, color: [205, 127, 50] },   // Classic bronze
-    { pos: 1, color: [255, 215, 140] }     // Light gold
+  copperWarm: [
+    { pos: 0, color: [94, 45, 16] },
+    { pos: 0.17, color: [132, 81, 50] },
+    { pos: 0.33, color: [166, 112, 81] },
+    { pos: 0.50, color: [192, 138, 104] },
+    { pos: 0.67, color: [203, 146, 113] },
+    { pos: 0.83, color: [196, 134, 101] },
+    { pos: 1, color: [182, 115, 79] }
   ],
-  antique: [
-    { pos: 0, color: [40, 30, 20] },
-    { pos: 0.5, color: [139, 90, 43] },
-    { pos: 1, color: [180, 140, 100] }
+  bronzeDark: [
+    { pos: 0, color: [99, 49, 17] },
+    { pos: 0.17, color: [147, 95, 61] },
+    { pos: 0.33, color: [186, 129, 96] },
+    { pos: 0.50, color: [203, 146, 113] },
+    { pos: 0.67, color: [181, 128, 99] },
+    { pos: 0.83, color: [128, 84, 63] },
+    { pos: 1, color: [54, 18, 14] }
   ],
-  copper: [
-    { pos: 0, color: [50, 25, 20] },
-    { pos: 0.5, color: [184, 115, 51] },
-    { pos: 1, color: [230, 180, 140] }
+  roseChampagne: [
+    { pos: 0, color: [161, 98, 64] },
+    { pos: 0.17, color: [146, 89, 55] },
+    { pos: 0.33, color: [138, 83, 49] },
+    { pos: 0.50, color: [135, 80, 47] },
+    { pos: 0.67, color: [162, 119, 90] },
+    { pos: 0.83, color: [202, 176, 158] },
+    { pos: 1, color: [250, 245, 239] }
+  ],
+  copperClassic: [
+    { pos: 0, color: [195, 130, 89] },
+    { pos: 0.17, color: [213, 162, 128] },
+    { pos: 0.33, color: [228, 188, 166] },
+    { pos: 0.50, color: [239, 209, 190] },
+    { pos: 0.67, color: [224, 187, 166] },
+    { pos: 0.83, color: [196, 151, 124] },
+    { pos: 1, color: [163, 105, 72] }
   ],
   gold: [
     { pos: 0, color: [70, 50, 20] },
+    { pos: 0.25, color: [140, 100, 40] },
     { pos: 0.5, color: [212, 175, 55] },
+    { pos: 0.75, color: [255, 215, 100] },
     { pos: 1, color: [255, 235, 150] }
-  ],
-  rose: [
-    { pos: 0, color: [60, 35, 35] },
-    { pos: 0.5, color: [183, 110, 121] },
-    { pos: 1, color: [240, 190, 190] }
   ],
   silver: [
     { pos: 0, color: [40, 40, 45] },
+    { pos: 0.25, color: [90, 90, 100] },
     { pos: 0.5, color: [150, 150, 160] },
+    { pos: 0.75, color: [190, 190, 200] },
     { pos: 1, color: [220, 220, 230] }
   ]
 }
@@ -57,7 +77,7 @@ function sampleGradient(gradient, t) {
 function App() {
   const [image, setImage] = useState(null)
   const [processedImage, setProcessedImage] = useState(null)
-  const [selectedGradient, setSelectedGradient] = useState('classic')
+  const [selectedGradient, setSelectedGradient] = useState('copperWarm')
   const [preserveWhite, setPreserveWhite] = useState(true)
   const [gradientMode, setGradientMode] = useState('luminance') // 'luminance' or 'positional'
   const [gradientDirection, setGradientDirection] = useState('horizontal') // 'horizontal', 'vertical', 'radial'
