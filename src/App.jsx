@@ -3,33 +3,6 @@ import './App.css'
 
 // Bronze gradient presets - rich multi-stop metallic gradients
 const GRADIENTS = {
-  copperWarm: [
-    { pos: 0, color: [94, 45, 16] },
-    { pos: 0.17, color: [132, 81, 50] },
-    { pos: 0.33, color: [166, 112, 81] },
-    { pos: 0.50, color: [192, 138, 104] },
-    { pos: 0.67, color: [203, 146, 113] },
-    { pos: 0.83, color: [196, 134, 101] },
-    { pos: 1, color: [182, 115, 79] }
-  ],
-  bronzeDark: [
-    { pos: 0, color: [99, 49, 17] },
-    { pos: 0.17, color: [147, 95, 61] },
-    { pos: 0.33, color: [186, 129, 96] },
-    { pos: 0.50, color: [203, 146, 113] },
-    { pos: 0.67, color: [181, 128, 99] },
-    { pos: 0.83, color: [128, 84, 63] },
-    { pos: 1, color: [54, 18, 14] }
-  ],
-  roseChampagne: [
-    { pos: 0, color: [161, 98, 64] },
-    { pos: 0.17, color: [146, 89, 55] },
-    { pos: 0.33, color: [138, 83, 49] },
-    { pos: 0.50, color: [135, 80, 47] },
-    { pos: 0.67, color: [162, 119, 90] },
-    { pos: 0.83, color: [202, 176, 158] },
-    { pos: 1, color: [250, 245, 239] }
-  ],
   copperClassic: [
     { pos: 0, color: [195, 130, 89] },
     { pos: 0.17, color: [213, 162, 128] },
@@ -39,19 +12,14 @@ const GRADIENTS = {
     { pos: 0.83, color: [196, 151, 124] },
     { pos: 1, color: [163, 105, 72] }
   ],
-  gold: [
-    { pos: 0, color: [70, 50, 20] },
-    { pos: 0.25, color: [140, 100, 40] },
-    { pos: 0.5, color: [212, 175, 55] },
-    { pos: 0.75, color: [255, 215, 100] },
-    { pos: 1, color: [255, 235, 150] }
-  ],
-  silver: [
-    { pos: 0, color: [40, 40, 45] },
-    { pos: 0.25, color: [90, 90, 100] },
-    { pos: 0.5, color: [150, 150, 160] },
-    { pos: 0.75, color: [190, 190, 200] },
-    { pos: 1, color: [220, 220, 230] }
+  bronzeDark: [
+    { pos: 0, color: [99, 49, 17] },
+    { pos: 0.17, color: [147, 95, 61] },
+    { pos: 0.33, color: [186, 129, 96] },
+    { pos: 0.50, color: [203, 146, 113] },
+    { pos: 0.67, color: [181, 128, 99] },
+    { pos: 0.83, color: [128, 84, 63] },
+    { pos: 1, color: [54, 18, 14] }
   ]
 }
 
@@ -77,10 +45,11 @@ function sampleGradient(gradient, t) {
 function App() {
   const [image, setImage] = useState(null)
   const [processedImage, setProcessedImage] = useState(null)
-  const [selectedGradient, setSelectedGradient] = useState('copperWarm')
+  const [selectedGradient, setSelectedGradient] = useState('copperClassic')
   const [gradientMode, setGradientMode] = useState('bevel') // 'bevel' or 'positional'
   const [gradientDirection, setGradientDirection] = useState('horizontal') // 'horizontal', 'vertical', 'radial'
   const [bevelDepth, setBevelDepth] = useState(20) // pixels
+  const [gradientShift, setGradientShift] = useState(0) // -50 to 50, shifts gradient position
   const canvasRef = useRef(null)
   const fileInputRef = useRef(null)
 
@@ -207,7 +176,10 @@ function App() {
         const dist = distanceField[pixelIndex]
         
         // Normalize distance: 0 at edge, 1 at bevelDepth or beyond
-        const t = Math.min(1, dist / bevelDepth)
+        let t = Math.min(1, dist / bevelDepth)
+        
+        // Apply gradient shift
+        t = Math.max(0, Math.min(1, t + gradientShift / 100))
         
         const [nr, ng, nb] = sampleGradient(gradient, t)
         
@@ -235,6 +207,9 @@ function App() {
           t = Math.min(1, dist / boundMaxDist)
         }
         
+        // Apply gradient shift
+        t = Math.max(0, Math.min(1, t + gradientShift / 100))
+        
         const [nr, ng, nb] = sampleGradient(gradient, t)
         
         pixels[i] = nr
@@ -245,7 +220,7 @@ function App() {
     
     ctx.putImageData(imageData, 0, 0)
     setProcessedImage(canvas.toDataURL('image/png'))
-  }, [gradientMode, gradientDirection, bevelDepth])
+  }, [gradientMode, gradientDirection, bevelDepth, gradientShift])
 
   const handleGradientChange = (gradientName) => {
     setSelectedGradient(gradientName)
@@ -312,6 +287,21 @@ function App() {
         {Object.entries(GRADIENTS).map(([name, gradient]) => 
           renderGradientPreview(name, gradient)
         )}
+      </div>
+
+      <div className="gradient-adjust">
+        <label className="option-label">Gradient Shift: {gradientShift > 0 ? '+' : ''}{gradientShift}%</label>
+        <input
+          type="range"
+          min="-50"
+          max="50"
+          value={gradientShift}
+          onChange={(e) => {
+            setGradientShift(parseInt(e.target.value))
+            if (image) setTimeout(() => processImage(image, selectedGradient), 0)
+          }}
+          className="slider wide"
+        />
       </div>
 
       <div className="options">
